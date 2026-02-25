@@ -92,39 +92,39 @@ Create a runnable baseline project with secure config handling and testing found
 Implement persistent watchlist and historical snapshot storage.
 
 ### Strict Subtasks
-- [ ] Create SQL migration for:
+- [x] Create SQL migration for:
   - `watchlists`
   - `daily_snapshots`
   - `fundamentals_cache`
-- [ ] Add constraints/indexes:
+- [x] Add constraints/indexes:
   - Unique ticker in `watchlists`
   - Unique (`ticker`, `date`) for snapshots (or deterministic upsert policy)
-- [ ] Implement `database.py` connection/config loader.
-- [ ] Implement repository methods:
+- [x] Implement `database.py` connection/config loader.
+- [x] Implement repository methods:
   - watchlist add/remove/list
   - snapshot insert/query
   - fundamentals cache upsert/query
-- [ ] Add defensive exception mapping for DB failures.
+- [x] Add defensive exception mapping for DB failures.
 
 ### Required Artifacts
-- [ ] Migration SQL file(s).
-- [ ] `database.py` repository API.
-- [ ] Integration test file for DB operations.
+- [x] Migration SQL file(s).
+- [x] `database.py` repository API.
+- [x] Integration test file for DB operations.
 
 ### Milestone Tests
-- [ ] Migration applies on clean DB.
-- [ ] CRUD tests for all 3 tables pass.
-- [ ] Duplicate snapshot handling behaves deterministically.
-- [ ] Connection failure surfaces controlled error.
+- [x] Migration applies on clean DB.
+- [x] CRUD tests for all 3 tables pass.
+- [x] Duplicate snapshot handling behaves deterministically.
+- [x] Connection failure surfaces controlled error.
 
 ### Regression Tests (M1 + current)
-- [ ] All Milestone 1 tests still pass.
+- [x] All Milestone 1 tests still pass.
 
 ### Commit Nudge (minimum)
-- [ ] `feat(db): add initial schema migration for watchlists snapshots cache`
-- [ ] `feat(db): implement supabase repositories for core entities`
-- [ ] `test(db): add integration tests for migrations and crud`
-- [ ] `fix(db): enforce deterministic duplicate snapshot behavior`
+- [x] `feat(db): add initial schema migration for watchlists snapshots cache`
+- [x] `feat(db): implement supabase repositories for core entities`
+- [x] `test(db): add integration tests for migrations and crud`
+- [x] `fix(db): enforce deterministic duplicate snapshot behavior`
 
 ---
 

@@ -119,7 +119,7 @@ class SupabaseRepository:
         }
         return self._execute_single(
             lambda: self.client.table("daily_snapshots")
-            .upsert(payload)
+            .upsert(payload, on_conflict="ticker,date")
             .execute(),
             "Failed to upsert daily snapshot.",
         )

@@ -157,7 +157,7 @@ def test_migration_sql_contains_required_schema() -> None:
     assert "ticker text not null unique" in sql
 
 
-def test_watchlist_snapshot_and_cache_crud() -> None:
+def test_watchlist_snapshot_and_cache_crud_with_deterministic_upsert() -> None:
     repo = SupabaseRepository(FakeSupabaseClient())
 
     repo.watchlist_add(" msft ")
@@ -174,17 +174,17 @@ def test_watchlist_snapshot_and_cache_crud() -> None:
     )
     second = repo.snapshot_upsert(
         ticker="MSFT",
-        snapshot_date="2026-02-26",
+        snapshot_date="2026-02-25",
         price_gap=20.2,
         conviction_score=72,
         is_recovery=True,
     )
 
     snapshots = repo.snapshot_query("MSFT")
-    assert len(snapshots) == 2
+    assert len(snapshots) == 1
     assert snapshots[0]["conviction_score"] == 72
     assert snapshots[0]["is_recovery"] is True
-    assert first["id"] != second["id"]
+    assert first["id"] == second["id"]
 
     repo.fundamentals_cache_upsert(
         ticker="MSFT",
