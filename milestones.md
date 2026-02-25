@@ -52,7 +52,7 @@
 Create a runnable baseline project with secure config handling and testing foundation.
 
 ### Strict Subtasks
-- [ ] Create base structure:
+- [x] Create base structure:
   - `.streamlit/secrets.toml.example`
   - `app.py`
   - `engine.py`
@@ -60,29 +60,29 @@ Create a runnable baseline project with secure config handling and testing found
   - `cron_job.py`
   - `requirements.txt`
   - `tests/` (`unit`, `integration`, `e2e`, `fixtures`)
-- [ ] Add dependency list (`streamlit`, `pandas`, `yfinance`, `requests`, `supabase`, `pytest`, etc.).
-- [ ] Add `.gitignore` with Python/venv/secrets rules.
-- [ ] Add `README.md` quick-start section.
-- [ ] Add `pytest.ini` with basic markers (`unit`, `integration`, `e2e`).
+- [x] Add dependency list (`streamlit`, `pandas`, `yfinance`, `requests`, `supabase`, `pytest`, etc.).
+- [x] Add `.gitignore` with Python/venv/secrets rules.
+- [x] Add `README.md` quick-start section.
+- [x] Add `pytest.ini` with basic markers (`unit`, `integration`, `e2e`).
 
 ### Required Artifacts
-- [ ] Repo structure from PRD exists.
-- [ ] `README.md` setup instructions are executable.
-- [ ] Test harness runs.
+- [x] Repo structure from PRD exists.
+- [x] `README.md` setup instructions are executable.
+- [x] Test harness runs.
 
 ### Milestone Tests
-- [ ] `pytest -q` executes successfully (at least one smoke test).
-- [ ] App launches to a basic Streamlit shell without crashing.
-- [ ] Missing secrets produce a clear non-crashing error message.
+- [x] `pytest -q` executes successfully (at least one smoke test).
+- [x] App launches to a basic Streamlit shell without crashing.
+- [x] Missing secrets produce a clear non-crashing error message.
 
 ### Regression Tests (Prior milestones)
-- [ ] N/A (first milestone).
+- [x] N/A (first milestone).
 
 ### Commit Nudge (minimum)
-- [ ] `chore(repo): initialize alphadip project scaffold`
-- [ ] `chore(config): add gitignore and secrets template`
-- [ ] `test(setup): add pytest markers and smoke test`
-- [ ] `docs(readme): add local setup instructions`
+- [x] `chore(repo): initialize alphadip project scaffold`
+- [x] `chore(config): add gitignore and secrets template`
+- [x] `test(setup): add pytest markers and smoke test`
+- [x] `docs(readme): add local setup instructions`
 
 ---
 
