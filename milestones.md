@@ -400,24 +400,24 @@ Release to Streamlit Community Cloud and complete operational handoff.
   - logic verification
   - mobile stress test
   - persistence over 24 hours
-- [ ] Produce handoff docs:
+- [x] Produce handoff docs:
   - admin guide (weight updates)
   - operations notes (rollback, incident basics)
 
 ### Required Artifacts
 - [ ] Public app URL.
-- [ ] `docs/admin_guide.md`.
-- [ ] `docs/uat_checklist.md`.
+- [x] `docs/admin_guide.md`.
+- [x] `docs/uat_checklist.md`.
 - [ ] Final release tag.
 
 ### Milestone Tests
 - [ ] Production smoke test passes (dashboard, deep-dive, refresh).
 - [ ] Mobile checks pass on iPhone and Android (no horizontal overflow).
 - [ ] New snapshot appears after next scheduled run.
-- [ ] Release candidate regression suite passes unchanged.
+- [x] Release candidate regression suite passes unchanged.
 
 ### Regression Tests (M1–M10)
-- [ ] Final full suite green before release tag.
+- [x] Final full suite green before release tag.
 
 ### Commit Nudge (minimum)
 - [ ] `chore(deploy): configure streamlit cloud deployment`

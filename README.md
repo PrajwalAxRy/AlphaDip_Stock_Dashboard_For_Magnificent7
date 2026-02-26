@@ -22,6 +22,7 @@ A conviction-based stock monitoring dashboard for the Magnificent 7 tech stocks.
 - [Configuration & Secrets](#configuration--secrets)
 - [Configurable Values & Tuning](#configurable-values--tuning)
 - [GitHub Actions CI/CD](#github-actions-cicd)
+- [Production Deployment & Handoff](#production-deployment--handoff)
 - [Development Workflow](#development-workflow)
 - [Milestones Completed](#milestones-completed)
 
@@ -437,6 +438,29 @@ These are the key values you may want to adjust, and where to find them:
   - `dry_run` (boolean) — compute without writing to DB
   - `run_date` (string, YYYY-MM-DD) — override the run date
 - **Required secrets**: `FMP_API_KEY`, `SUPABASE_URL`, `SUPABASE_KEY`
+
+---
+
+## Production Deployment & Handoff
+
+### Streamlit Community Cloud
+
+1. Create app from repository `PrajwalAxRy/AlphaDip_Stock_Dashboard_For_Magnificent7`.
+2. Select branch `main` and main file path `app.py`.
+3. In app secrets, configure:
+  - `FMP_API_KEY`
+  - `SUPABASE_URL`
+  - `SUPABASE_KEY`
+4. Deploy and run production smoke checks:
+  - Command Center loads
+  - Deep Dive opens
+  - Manual refresh succeeds
+
+### Handoff Artifacts
+
+- Admin/operations guide: `docs/admin_guide.md`
+- UAT execution checklist: `docs/uat_checklist.md`
+- Release notes: `docs/release_notes_v1.0.0.md`
 
 ---
 
