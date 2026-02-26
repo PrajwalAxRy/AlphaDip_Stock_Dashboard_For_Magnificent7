@@ -1,0 +1,50 @@
+name: Daily Snapshot Update
+
+on:
+  schedule:
+    - cron: "5 21 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run pipeline without DB writes"
+        required: false
+        default: false
+        type: boolean
+      run_date:
+        description: "Optional run date (YYYY-MM-DD)"
+        required: false
+        type: string
+
+jobs:
+  daily-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily snapshot pipeline
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          INPUT_RUN_DATE: ${{ github.event.inputs.run_date || '' }}
+        run: |
+          ARGS=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "$INPUT_RUN_DATE" ]; then
+            ARGS="$ARGS --date $INPUT_RUN_DATE"
+          fi
+          python cron_job.py $ARGS
