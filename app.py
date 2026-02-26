@@ -32,8 +32,13 @@ from services.fmp_client import (
     FMPClientError,
     FMPConnectivityError,
     FMPRateLimitError,
-    FMPSubscriptionError,
 )
+try:
+    from services.fmp_client import FMPSubscriptionError
+except ImportError:
+    class FMPSubscriptionError(FMPClientError):
+        pass
+
 from services.market_status import (
     is_market_closed,
     last_trading_date,
