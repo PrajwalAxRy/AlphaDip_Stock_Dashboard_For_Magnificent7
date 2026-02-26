@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 
+import pytest
+
 from services.cache import AlphaDipCachePolicy
+
+pytestmark = pytest.mark.unit
 
 
 class MutableClock:

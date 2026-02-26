@@ -8,15 +8,10 @@ Covers:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
-import sys
-from typing import Any, Dict, List, Sequence
+from typing import Any
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import app
 from cron_job import run_daily_snapshot_pipeline
@@ -28,212 +23,61 @@ from services.error_handling import (
     log_warning,
     user_safe_message,
 )
-from services.fmp_client import FMPClientError, FMPRateLimitError, QuoteData, FundamentalsData
+from services.fmp_client import FMPRateLimitError, FundamentalsData
 from services.market_status import (
     is_market_closed,
     is_weekend,
     last_trading_date,
     should_skip_live_fetch,
 )
-from services.yfinance_client import OhlcBar
+from tests.conftest import (
+    FakeFMPClient,
+    FakeRateLimitedFMPClient,
+    FakeRepository,
+    FakeStaleFMPClient,
+    FakeYFinanceClient,
+    make_snapshot_row,
+    make_fundamentals_cache_row,
+)
 
 pytestmark = pytest.mark.unit
 
 
-# ---------------------------------------------------------------------------
-# Fakes / Helpers
-# ---------------------------------------------------------------------------
-
-@dataclass
-class FakeRepository:
-    watchlist: list[dict[str, Any]]
-
-    def __post_init__(self) -> None:
-        self.snapshots: dict[str, list[dict[str, Any]]] = {
-            "MSFT": [
-                {
-                    "ticker": "MSFT",
-                    "date": "2026-02-20",
-                    "price": 400.0,
-                    "price_gap": 12.5,
-                    "conviction_score": 62,
-                    "is_recovery": True,
-                },
-            ],
-            "AAPL": [
-                {
-                    "ticker": "AAPL",
-                    "date": "2026-02-20",
-                    "price": 210.0,
-                    "price_gap": 8.0,
-                    "conviction_score": 45,
-                    "is_recovery": False,
-                },
-            ],
-        }
-        self.cache: dict[str, dict[str, Any]] = {
-            "MSFT": {"peg_ratio": 1.3, "fcf_yield": 0.08},
-        }
-        self.persisted_snapshots: list[dict[str, Any]] = []
-
-    def watchlist_list(self) -> list[dict[str, Any]]:
-        return list(self.watchlist)
-
-    def watchlist_add(self, ticker: str) -> dict[str, Any]:
-        row = {"ticker": ticker}
-        self.watchlist.append(row)
-        return row
-
-    def watchlist_remove(self, ticker: str) -> int:
-        before = len(self.watchlist)
-        self.watchlist = [r for r in self.watchlist if r["ticker"] != ticker]
-        return before - len(self.watchlist)
-
-    def snapshot_query(self, ticker: str, limit: int = 90) -> list[dict[str, Any]]:
-        rows = self.snapshots.get(ticker, [])
-        return list(rows[:limit])
-
-    def snapshot_upsert(
-        self,
-        ticker: str,
-        snapshot_date: str,
-        price_gap: float,
-        conviction_score: int,
-        is_recovery: bool,
-    ) -> dict[str, Any]:
-        payload = {
-            "ticker": ticker,
-            "date": snapshot_date,
-            "price_gap": price_gap,
-            "conviction_score": conviction_score,
-            "is_recovery": is_recovery,
-        }
-        existing = next(
-            (r for r in self.persisted_snapshots if r["ticker"] == ticker and r["date"] == snapshot_date),
-            None,
-        )
-        if existing:
-            existing.update(payload)
-            return existing
-        self.persisted_snapshots.append(payload)
-        return payload
-
-    def fundamentals_cache_query(self, ticker: str) -> dict[str, Any] | None:
-        return self.cache.get(ticker)
-
-    def fundamentals_cache_upsert(
-        self, ticker: str, as_of_date: str, peg_ratio: float | None, fcf_yield: float | None, raw_payload: dict[str, Any],
-    ) -> dict[str, Any]:
-        payload = {"ticker": ticker, "as_of_date": as_of_date, "peg_ratio": peg_ratio, "fcf_yield": fcf_yield, "raw_payload": raw_payload}
-        self.cache[ticker] = payload
-        return payload
+# ===================================================================
+# Helper: build pre-seeded FakeRepository for resilience tests
+# ===================================================================
 
 
-class FakeFMPClient:
-    """Normal FMP client that returns valid data."""
-    def __init__(self, *, price: float = 100.0, year_high: float = 120.0) -> None:
-        self.read_only = False
-        self.get_quote_calls: list[str] = []
-
-    def get_quote(self, ticker: str, *, use_cache: bool = True) -> QuoteData:
-        self.get_quote_calls.append(ticker)
-        return QuoteData(
-            ticker=ticker,
-            price=100.0,
-            change_percent=1.0,
-            year_high_52w=120.0,
-            fetched_at=datetime.now(timezone.utc),
-        )
-
-    def get_fundamentals(self, ticker: str) -> FundamentalsData:
-        return FundamentalsData(
-            ticker=ticker,
-            peg_ratio=1.1,
-            free_cash_flow=12_000_000_000.0,
-            fcf_report_date=date(2026, 2, 1),
-            fetched_at=datetime.now(timezone.utc),
-        )
-
-    def get_cash_flow_statement_quarter(self, ticker: str, *, limit: int = 4) -> list[dict[str, Any]]:
-        return [
-            {"ticker": ticker, "report_date": date(2025, 9, 30), "free_cash_flow": 1.0},
-            {"ticker": ticker, "report_date": date(2025, 12, 31), "free_cash_flow": 2.0},
-            {"ticker": ticker, "report_date": date(2026, 2, 1), "free_cash_flow": 3.0},
-        ]
-
-
-class FakeRateLimitedFMPClient:
-    """FMP client that always triggers rate-limit."""
-
-    def __init__(self) -> None:
-        self.read_only = True
-        self.get_quote_calls: list[str] = []
-
-    def get_quote(self, ticker: str, *, use_cache: bool = True) -> QuoteData:
-        self.get_quote_calls.append(ticker)
-        raise FMPRateLimitError("rate limit")
-
-    def get_fundamentals(self, ticker: str) -> FundamentalsData:
-        raise FMPRateLimitError("rate limit")
-
-    def get_cash_flow_statement_quarter(self, ticker: str, *, limit: int = 4) -> list[dict[str, Any]]:
-        raise FMPRateLimitError("rate limit")
-
-
-class FakeStaleFMPClient:
-    """FMP client returning quotes from >24h ago."""
-
-    def __init__(self) -> None:
-        self.read_only = False
-        self.get_quote_calls: list[str] = []
-
-    def get_quote(self, ticker: str, *, use_cache: bool = True) -> QuoteData:
-        self.get_quote_calls.append(ticker)
-        # Return a quote fetched 30 hours before the test's simulated Monday
-        # Monday 2026-02-23 19:00 UTC - 30h = Sunday 2026-02-22 13:00 UTC
-        return QuoteData(
-            ticker=ticker,
-            price=100.0,
-            change_percent=1.0,
-            year_high_52w=120.0,
-            fetched_at=datetime(2026, 2, 22, 13, 0, tzinfo=timezone.utc),
-        )
-
-    def get_fundamentals(self, ticker: str) -> FundamentalsData:
-        return FundamentalsData(
-            ticker=ticker,
-            peg_ratio=1.1,
-            free_cash_flow=12_000_000_000.0,
-            fcf_report_date=date(2026, 2, 1),
-            fetched_at=datetime(2026, 2, 22, 13, 0, tzinfo=timezone.utc),
-        )
-
-    def get_cash_flow_statement_quarter(self, ticker: str, *, limit: int = 4) -> list[dict[str, Any]]:
-        return [
-            {"ticker": ticker, "report_date": date(2025, 9, 30), "free_cash_flow": 1.0},
-            {"ticker": ticker, "report_date": date(2025, 12, 31), "free_cash_flow": 2.0},
-            {"ticker": ticker, "report_date": date(2026, 2, 1), "free_cash_flow": 3.0},
-        ]
-
-
-class FakeYFinanceClient:
-    def get_ohlc_2y(self, ticker: str) -> list[OhlcBar]:
-        start = date(2025, 1, 1)
-        bars: list[OhlcBar] = []
-        for i in range(260):
-            close = 80.0 + i * 0.2 + (0.5 if ticker == "SPY" else 0.0)
-            bars.append(
-                OhlcBar(
-                    ticker=ticker,
-                    date=start + timedelta(days=i),
-                    open=close - 1,
-                    high=close + 1,
-                    low=close - 2,
-                    close=close,
-                    volume=1_000_000,
-                )
-            )
-        return bars
+def _resilience_repo(
+    tickers: list[str] | None = None,
+) -> FakeRepository:
+    """Return a ``FakeRepository`` pre-seeded for resilience tests."""
+    if tickers is None:
+        tickers = ["MSFT", "AAPL"]
+    watchlist = [{"ticker": t} for t in tickers]
+    snapshots = {
+        "MSFT": [
+            make_snapshot_row(
+                "MSFT",
+                date_str="2026-02-20",
+                price_gap=12.5,
+                conviction_score=62,
+                is_recovery=True,
+            ),
+        ],
+        "AAPL": [
+            make_snapshot_row(
+                "AAPL",
+                date_str="2026-02-20",
+                price=210.0,
+                price_gap=8.0,
+                conviction_score=45,
+                is_recovery=False,
+            ),
+        ],
+    }
+    cache = {"MSFT": make_fundamentals_cache_row("MSFT")}
+    return FakeRepository(watchlist=watchlist, snapshots=snapshots, cache=cache)
 
 
 # ===================================================================
@@ -320,7 +164,7 @@ class TestSundaySimulationUsesFridaySnapshot:
     """Sunday (market-closed) should serve cached rows, no FMP calls."""
 
     def test_sunday_command_center_uses_cached_snapshots(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         fmp_client = FakeFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -343,7 +187,7 @@ class TestSundaySimulationUsesFridaySnapshot:
         assert len(fmp_client.get_quote_calls) == 0
 
     def test_sunday_renders_friday_data_for_multiple_tickers(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}, {"ticker": "AAPL"}])
+        repo = _resilience_repo(["MSFT", "AAPL"])
         fmp_client = FakeFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -368,7 +212,7 @@ class TestSundaySimulationUsesFridaySnapshot:
         assert len(fmp_client.get_quote_calls) == 0
 
     def test_sunday_ticker_with_no_snapshot_shows_na(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "GOOG"}])
+        repo = _resilience_repo(["GOOG"])
         fmp_client = FakeFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -395,7 +239,7 @@ class TestPipelineWeekendSkip:
     """Pipeline should skip processing when market is closed."""
 
     def test_pipeline_skips_on_sunday(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         fmp_client = FakeFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -415,7 +259,7 @@ class TestPipelineWeekendSkip:
     def test_pipeline_skips_on_saturday(self) -> None:
         summary = run_daily_snapshot_pipeline(
             as_of_date=date(2026, 2, 21),  # Saturday
-            repository=FakeRepository(watchlist=[{"ticker": "MSFT"}]),
+            repository=_resilience_repo(["MSFT"]),
             fmp_client=FakeFMPClient(),
             yfinance_client=FakeYFinanceClient(),
         )
@@ -423,7 +267,7 @@ class TestPipelineWeekendSkip:
         assert summary.skipped_market_closed is True
 
     def test_pipeline_runs_on_weekday(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         fmp_client = FakeFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -448,7 +292,7 @@ class TestRateLimitReadOnlyMode:
     """When FMP returns 429, app must stay usable with cached data."""
 
     def test_429_keeps_dashboard_usable_with_cached_data(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         fmp_client = FakeRateLimitedFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -472,7 +316,7 @@ class TestRateLimitReadOnlyMode:
         assert row["Trend"] == "🚀"  # from cached is_recovery=True
 
     def test_429_read_only_mode_flag_is_true(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "AAPL"}])
+        repo = _resilience_repo(["AAPL"])
         fmp_client = FakeRateLimitedFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -489,7 +333,7 @@ class TestRateLimitReadOnlyMode:
         assert result.read_only_mode is True
 
     def test_429_ticker_without_cached_snapshot_shows_na(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "GOOG"}])
+        repo = _resilience_repo(["GOOG"])
         fmp_client = FakeRateLimitedFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -572,7 +416,7 @@ class TestMissingFundamentalsNeverCrash:
             def get_cash_flow_statement_quarter(self, ticker: str, *, limit: int = 4) -> list[dict[str, Any]]:
                 return []
 
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
 
         summary = run_daily_snapshot_pipeline(
             as_of_date=date(2026, 2, 23),  # Monday
@@ -600,7 +444,7 @@ class TestMissingFundamentalsNeverCrash:
                     {"report_date": date(2026, 2, 1), "free_cash_flow": None},
                 ]
 
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         model = app.build_deep_dive_model(
             repository=repo,
             fmp_client=NullFundamentalsFMP(),
@@ -622,7 +466,7 @@ class TestStaleDataStatus:
     """Stale quotes (>24h) should be flagged in the command center result."""
 
     def test_stale_quote_is_flagged(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         fmp_client = FakeStaleFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -639,7 +483,7 @@ class TestStaleDataStatus:
         assert result.stale_tickers == ["MSFT"]
 
     def test_fresh_quote_is_not_flagged(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}])
+        repo = _resilience_repo(["MSFT"])
         fmp_client = FakeFMPClient()
         yfinance_client = FakeYFinanceClient()
 
@@ -656,7 +500,7 @@ class TestStaleDataStatus:
         assert result.stale_tickers == []
 
     def test_multiple_stale_tickers_all_flagged(self) -> None:
-        repo = FakeRepository(watchlist=[{"ticker": "MSFT"}, {"ticker": "AAPL"}])
+        repo = _resilience_repo(["MSFT", "AAPL"])
         fmp_client = FakeStaleFMPClient()
         yfinance_client = FakeYFinanceClient()
 

@@ -1,5 +1,9 @@
+import pytest
+
 from engine import project_name
 import app
+
+pytestmark = pytest.mark.unit
 
 
 def test_project_name_smoke() -> None:
