@@ -14,6 +14,7 @@ from services.fmp_client import (
     FMPClient,
     FMPConnectivityError,
     FMPRateLimitError,
+    FMPSubscriptionError,
 )
 from services.yfinance_client import YFinanceClient
 
@@ -124,6 +125,42 @@ def test_request_exception_is_classified_as_connectivity_error() -> None:
 
     with pytest.raises(FMPConnectivityError):
         client.get_quote("TSLA", use_cache=False)
+
+
+def test_quote_uses_stable_endpoint_and_symbol_param() -> None:
+    session = FakeSession(
+        responses=[
+            FakeResponse(
+                status_code=200,
+                payload=[{"symbol": "MSFT", "price": 400.25, "changesPercentage": 1.2, "yearHigh": 468.0}],
+            )
+        ]
+    )
+    client = FMPClient(api_key="test-key", session=session)
+
+    client.get_quote("MSFT", use_cache=False)
+
+    assert session.calls[0]["url"].endswith("/stable/quote")
+    assert session.calls[0]["params"]["symbol"] == "MSFT"
+
+
+def test_legacy_endpoint_message_is_classified_as_subscription_error() -> None:
+    session = FakeSession(
+        responses=[
+            FakeResponse(
+                status_code=200,
+                payload={
+                    "Error Message": (
+                        "Legacy Endpoint : Due to Legacy endpoints being no longer supported"
+                    )
+                },
+            )
+        ]
+    )
+    client = FMPClient(api_key="test-key", session=session)
+
+    with pytest.raises(FMPSubscriptionError):
+        client.get_quote("AAPL", use_cache=False)
 
 
 def test_yfinance_ohlc_normalization_with_mocked_provider(monkeypatch: pytest.MonkeyPatch) -> None:
