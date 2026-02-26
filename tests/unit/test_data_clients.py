@@ -9,7 +9,12 @@ import pytest
 import requests
 
 from services.cache import AlphaDipCachePolicy
-from services.fmp_client import FMPClient, FMPRateLimitError
+from services.fmp_client import (
+    FMPAuthenticationError,
+    FMPClient,
+    FMPConnectivityError,
+    FMPRateLimitError,
+)
 from services.yfinance_client import YFinanceClient
 
 pytestmark = pytest.mark.unit
@@ -94,6 +99,31 @@ def test_http_429_switches_client_to_read_only_mode() -> None:
         client.get_quote("TSLA", use_cache=False)
 
     assert len(session.calls) == 1
+
+
+def test_http_401_is_classified_as_authentication_error() -> None:
+    session = FakeSession(responses=[FakeResponse(status_code=401, payload={"Error Message": "Invalid API KEY."})])
+    client = FMPClient(api_key="test-key", session=session)
+
+    with pytest.raises(FMPAuthenticationError):
+        client.get_quote("TSLA", use_cache=False)
+
+
+def test_request_exception_is_classified_as_connectivity_error() -> None:
+    error = requests.Timeout("request timed out")
+    session = FakeSession(
+        responses=[
+            FakeResponse(
+                status_code=200,
+                payload=[],
+                error=error,
+            )
+        ]
+    )
+    client = FMPClient(api_key="test-key", session=session)
+
+    with pytest.raises(FMPConnectivityError):
+        client.get_quote("TSLA", use_cache=False)
 
 
 def test_yfinance_ohlc_normalization_with_mocked_provider(monkeypatch: pytest.MonkeyPatch) -> None:

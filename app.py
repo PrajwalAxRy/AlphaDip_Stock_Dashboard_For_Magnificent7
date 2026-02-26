@@ -26,7 +26,13 @@ from services.error_handling import (
     log_warning,
     user_safe_message,
 )
-from services.fmp_client import FMPClient, FMPClientError, FMPRateLimitError
+from services.fmp_client import (
+    FMPAuthenticationError,
+    FMPClient,
+    FMPClientError,
+    FMPConnectivityError,
+    FMPRateLimitError,
+)
 from services.market_status import (
     is_market_closed,
     last_trading_date,
@@ -410,9 +416,14 @@ def _build_clients() -> tuple[SupabaseRepository | None, FMPClient | None, YFina
         st.error(f"Unexpected error initializing database: {exc}")
         return None, None, None
 
+    api_key = str(st.secrets.get("FMP_API_KEY", "")).strip()
+    if not api_key:
+        st.error("FMP_API_KEY is missing or empty in Streamlit secrets.")
+        return None, None, None
+
     try:
         fmp_client = FMPClient(
-            api_key=str(st.secrets.get("FMP_API_KEY", "")),
+            api_key=api_key,
             cache_policy=AlphaDipCachePolicy(),
         )
         # Validate the key with a lightweight call
@@ -420,11 +431,22 @@ def _build_clients() -> tuple[SupabaseRepository | None, FMPClient | None, YFina
     except FMPRateLimitError:
         st.warning("FMP rate limit hit during startup — continuing in read-only mode.")
         fmp_client.read_only = True
-    except FMPClientError:
-        st.error(
-            "FMP_API_KEY appears invalid — quote request failed. "
-            "Verify the key in Streamlit secrets."
-        )
+    except FMPClientError as exc:
+        if isinstance(exc, FMPAuthenticationError):
+            st.error(
+                "FMP authentication failed. Verify FMP_API_KEY in Streamlit secrets "
+                "and ensure it has access to quote endpoints."
+            )
+        elif isinstance(exc, FMPConnectivityError):
+            st.error(
+                "FMP request failed due to connectivity/provider issues. "
+                "Retry shortly and verify network access from Streamlit Cloud."
+            )
+        else:
+            st.error(
+                "FMP initialization failed due to an unexpected provider response. "
+                "Check API key permissions and provider status."
+            )
         return None, None, None
     except Exception as exc:
         st.error(f"Unexpected error initializing FMP client: {exc}")

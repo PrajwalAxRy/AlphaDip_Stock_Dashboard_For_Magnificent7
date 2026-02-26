@@ -15,6 +15,14 @@ class FMPClientError(RuntimeError):
     pass
 
 
+class FMPAuthenticationError(FMPClientError):
+    pass
+
+
+class FMPConnectivityError(FMPClientError):
+    pass
+
+
 class FMPRateLimitError(FMPClientError):
     pass
 
@@ -48,7 +56,9 @@ class FMPClient:
         cache_policy: AlphaDipCachePolicy | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
-        self.api_key = api_key
+        self.api_key = api_key.strip()
+        if not self.api_key:
+            raise FMPAuthenticationError("FMP API key is missing or empty.")
         self.base_url = base_url.rstrip("/")
         self.session = session
         self.timeout_seconds = timeout_seconds
@@ -169,6 +179,11 @@ class FMPClient:
                 self.logger.error("fmp_rate_limited path=%s latency_ms=%s switched_read_only=true", path, latency_ms)
                 raise FMPRateLimitError("FMP API rate limit reached (HTTP 429).")
 
+            if response.status_code in (401, 403):
+                raise FMPAuthenticationError(
+                    f"FMP API key rejected (HTTP {response.status_code})."
+                )
+
             response.raise_for_status()
             payload = response.json()
             if isinstance(payload, list):
@@ -176,7 +191,17 @@ class FMPClient:
             if isinstance(payload, dict):
                 # Some error responses come as {"Error Message": ...}
                 if "Error Message" in payload:
-                    raise FMPClientError(f"FMP error: {payload['Error Message']}")
+                    message = str(payload["Error Message"])
+                    lowered_message = message.lower()
+                    if (
+                        "invalid api key" in lowered_message
+                        or "apikey invalid" in lowered_message
+                        or "not authorized" in lowered_message
+                        or "unauthorized" in lowered_message
+                        or "forbidden" in lowered_message
+                    ):
+                        raise FMPAuthenticationError(f"FMP authentication failed: {message}")
+                    raise FMPClientError(f"FMP error: {message}")
                 return [payload]
             return []  # unexpected type — treat as empty
         except FMPRateLimitError:
@@ -184,7 +209,7 @@ class FMPClient:
         except requests.RequestException as exc:
             latency_ms = int((perf_counter() - start) * 1000)
             self.logger.error("fmp_request_error path=%s latency_ms=%s error=%s", path, latency_ms, exc)
-            raise FMPClientError(f"FMP request failed for {path}.") from exc
+            raise FMPConnectivityError(f"FMP request failed for {path}.") from exc
 
 
 def _normalize_ticker(ticker: str) -> str:
