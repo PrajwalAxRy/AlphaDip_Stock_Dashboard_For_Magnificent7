@@ -175,30 +175,30 @@ Build reliable data clients while preserving API credits.
 Translate PRD formulas into deterministic pure functions.
 
 ### Strict Subtasks
-- [ ] Implement price-gap calculation (% below 52-week high).
-- [ ] Implement monitor meter bands and score mapping.
-- [ ] Implement weighted components:
+- [x] Implement price-gap calculation (% below 52-week high).
+- [x] Implement monitor meter bands and score mapping.
+- [x] Implement weighted components:
   - Price Architecture (30)
   - Trend Confirmation (20)
   - PEG (20)
   - FCF safety (15)
   - Relative strength vs S&P (15)
-- [ ] Clamp final score to 0–100.
-- [ ] Implement `is_recovery` (`price > 50d MA`).
-- [ ] Implement neutral fallback for missing fundamental values.
+- [x] Clamp final score to 0–100.
+- [x] Implement `is_recovery` (`price > 50d MA`).
+- [x] Implement neutral fallback for missing fundamental values.
 
 ### Required Artifacts
-- [ ] `engine.py` complete with small, testable functions.
-- [ ] Reference fixture case for manual parity check.
+- [x] `engine.py` complete with small, testable functions.
+- [x] Reference fixture case for manual parity check.
 
 ### Milestone Tests
-- [ ] Boundary tests for meter and PEG thresholds.
-- [ ] Deterministic test for rounding and score clamp.
-- [ ] Missing-data fallback returns neutral component score.
-- [ ] Manual parity test: one stock (e.g., MSFT) matches expected output.
+- [x] Boundary tests for meter and PEG thresholds.
+- [x] Deterministic test for rounding and score clamp.
+- [x] Missing-data fallback returns neutral component score.
+- [x] Manual parity test: one stock (e.g., MSFT) matches expected output.
 
 ### Regression Tests (M1–M4)
-- [ ] Full prior test suites pass.
+- [x] Full prior test suites pass.
 
 ### Commit Nudge (minimum)
 - [ ] `feat(engine): add price gap and monitor meter logic`
