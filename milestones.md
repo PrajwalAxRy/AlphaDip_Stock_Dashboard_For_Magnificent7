@@ -201,10 +201,10 @@ Translate PRD formulas into deterministic pure functions.
 - [x] Full prior test suites pass.
 
 ### Commit Nudge (minimum)
-- [ ] `feat(engine): add price gap and monitor meter logic`
-- [ ] `feat(engine): add weighted conviction scoring model`
-- [ ] `test(engine): add boundary and reference parity tests`
-- [ ] `fix(engine): stabilize rounding and fallback behavior`
+- [x] `feat(engine): add price gap and monitor meter logic`
+- [x] `feat(engine): add weighted conviction scoring model`
+- [x] `test(engine): add boundary and reference parity tests`
+- [x] `fix(engine): stabilize rounding and fallback behavior`
 
 ---
 
@@ -214,28 +214,28 @@ Translate PRD formulas into deterministic pure functions.
 Automate market-close data pulls and historical snapshot persistence.
 
 ### Strict Subtasks
-- [ ] Implement `cron_job.py` orchestration:
+- [x] Implement `cron_job.py` orchestration:
   - load tracked tickers
   - fetch data
   - compute score
   - persist snapshot
-- [ ] Add idempotent run behavior for same day reruns.
-- [ ] Add structured logging and error counts.
-- [ ] Add GitHub Action workflow scheduled at 4:05 PM EST.
-- [ ] Add manual trigger (`workflow_dispatch`) and dry-run mode.
+- [x] Add idempotent run behavior for same day reruns.
+- [x] Add structured logging and error counts.
+- [x] Add GitHub Action workflow scheduled at 4:05 PM EST.
+- [x] Add manual trigger (`workflow_dispatch`) and dry-run mode.
 
 ### Required Artifacts
-- [ ] `.github/workflows/daily_update.yml`
-- [ ] End-to-end pipeline test file.
+- [x] `.github/workflows/daily_update.yml`
+- [x] End-to-end pipeline test file.
 
 ### Milestone Tests
-- [ ] Pipeline inserts expected snapshots with mocked providers.
-- [ ] Rerun same date does not duplicate rows.
-- [ ] Workflow YAML validates and executes in CI.
-- [ ] Dry-run does not write to DB.
+- [x] Pipeline inserts expected snapshots with mocked providers.
+- [x] Rerun same date does not duplicate rows.
+- [x] Workflow YAML validates and executes in CI.
+- [x] Dry-run does not write to DB.
 
 ### Regression Tests (M1–M5)
-- [ ] Full prior suites pass.
+- [x] Full prior suites pass.
 
 ### Commit Nudge (minimum)
 - [ ] `feat(cron): add daily snapshot generation pipeline`
