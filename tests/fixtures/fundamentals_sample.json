@@ -1,0 +1,23 @@
+{
+  "ticker": "MSFT",
+  "quote": {
+    "price": 419.50,
+    "change_percent": 0.36,
+    "year_high_52w": 468.35
+  },
+  "ratios_ttm": {
+    "pegRatioTTM": 1.45,
+    "priceEarningsRatioTTM": 32.1,
+    "priceToBookRatioTTM": 12.8
+  },
+  "cash_flow_quarters": [
+    {"date": "2025-09-30", "freeCashFlow": 19200000000, "operatingCashFlow": 24500000000},
+    {"date": "2025-12-31", "freeCashFlow": 20100000000, "operatingCashFlow": 25800000000},
+    {"date": "2026-02-01", "freeCashFlow": 21500000000, "operatingCashFlow": 27200000000}
+  ],
+  "fundamentals": {
+    "peg_ratio": 1.45,
+    "free_cash_flow": 21500000000,
+    "fcf_report_date": "2026-02-01"
+  }
+}
