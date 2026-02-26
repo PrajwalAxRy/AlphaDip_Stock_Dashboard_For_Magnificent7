@@ -238,10 +238,10 @@ Automate market-close data pulls and historical snapshot persistence.
 - [x] Full prior suites pass.
 
 ### Commit Nudge (minimum)
-- [ ] `feat(cron): add daily snapshot generation pipeline`
-- [ ] `ci(cron): schedule daily market-close workflow`
-- [ ] `test(cron): add idempotency and dry-run coverage`
-- [ ] `chore(logging): add structured pipeline logs`
+- [x] `feat(cron): add daily snapshot generation pipeline`
+- [x] `ci(cron): schedule daily market-close workflow`
+- [x] `test(cron): add idempotency and dry-run coverage`
+- [x] `chore(logging): add structured pipeline logs`
 
 ---
 
@@ -251,29 +251,29 @@ Automate market-close data pulls and historical snapshot persistence.
 Deliver watchlist management and global ticker dashboard.
 
 ### Strict Subtasks
-- [ ] Build ticker add/remove UI with DB persistence.
-- [ ] Render dashboard rows with:
+- [x] Build ticker add/remove UI with DB persistence.
+- [x] Render dashboard rows with:
   - ticker + price
   - price gap
   - monitor meter (color coding)
   - trend icon (🚀 / 📉)
   - deep-dive action
-- [ ] Implement manual refresh button with “lite” behavior (quote-first).
-- [ ] Add mobile-responsive layout and `use_container_width=True` charts/tables.
-- [ ] Add explicit read-only mode banner when circuit breaker is active.
+- [x] Implement manual refresh button with “lite” behavior (quote-first).
+- [x] Add mobile-responsive layout and `use_container_width=True` charts/tables.
+- [x] Add explicit read-only mode banner when circuit breaker is active.
 
 ### Required Artifacts
-- [ ] `app.py` command center view.
-- [ ] UI helper module(s).
+- [x] `app.py` command center view.
+- [x] UI helper module(s).
 
 ### Milestone Tests
-- [ ] Add/remove ticker flow works and persists.
-- [ ] Dashboard renders required columns/indicators.
-- [ ] Manual refresh updates quote without unnecessary fundamentals calls.
-- [ ] Local latency check under target conditions (<3 seconds initial load).
+- [x] Add/remove ticker flow works and persists.
+- [x] Dashboard renders required columns/indicators.
+- [x] Manual refresh updates quote without unnecessary fundamentals calls.
+- [x] Local latency check under target conditions (<3 seconds initial load).
 
 ### Regression Tests (M1–M6)
-- [ ] Full prior suites pass.
+- [x] Full prior suites pass.
 
 ### Commit Nudge (minimum)
 - [ ] `feat(ui): add watchlist management controls`
