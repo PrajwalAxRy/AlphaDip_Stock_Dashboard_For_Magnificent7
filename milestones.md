@@ -289,24 +289,24 @@ Deliver watchlist management and global ticker dashboard.
 Deliver per-ticker analytical page with historical context.
 
 ### Strict Subtasks
-- [ ] Add deep-dive navigation flow from dashboard.
-- [ ] Display 90-day conviction score chart from `daily_snapshots`.
-- [ ] Show component-level score breakdown and raw metrics.
-- [ ] Implement dynamic commentary templates (if/else rules).
-- [ ] Show “Data Unavailable” badge for missing fundamentals.
+- [x] Add deep-dive navigation flow from dashboard.
+- [x] Display 90-day conviction score chart from `daily_snapshots`.
+- [x] Show component-level score breakdown and raw metrics.
+- [x] Implement dynamic commentary templates (if/else rules).
+- [x] Show “Data Unavailable” badge for missing fundamentals.
 
 ### Required Artifacts
-- [ ] Deep-dive UI module.
-- [ ] Data transformation helper for chart series.
+- [x] Deep-dive UI module.
+- [x] Data transformation helper for chart series.
 
 ### Milestone Tests
-- [ ] 90-day series displays sorted, accurate values.
-- [ ] Component totals align with engine output.
-- [ ] Missing PEG/FCF shows badge and no crash.
-- [ ] Commentary text path changes under different score profiles.
+- [x] 90-day series displays sorted, accurate values.
+- [x] Component totals align with engine output.
+- [x] Missing PEG/FCF shows badge and no crash.
+- [x] Commentary text path changes under different score profiles.
 
 ### Regression Tests (M1–M7)
-- [ ] Full prior suites pass.
+- [x] Full prior suites pass.
 
 ### Commit Nudge (minimum)
 - [ ] `feat(ui): add deep dive page and routing`
