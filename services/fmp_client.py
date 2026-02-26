@@ -67,10 +67,14 @@ class FMPClient:
         if not rows:
             raise FMPClientError(f"No quote data returned for ticker {normalized}.")
 
-        row = rows[0]
+        row = rows[0] if isinstance(rows[0], dict) else {}
+        price_val = _to_float(row.get("price"), default=0.0)
+        if price_val <= 0:
+            raise FMPClientError(f"Invalid or missing price in quote for {normalized}.")
+
         quote = QuoteData(
             ticker=normalized,
-            price=_to_float(row.get("price"), default=0.0),
+            price=price_val,
             change_percent=_to_optional_float(row.get("changesPercentage")),
             year_high_52w=_to_optional_float(row.get("yearHigh")),
             fetched_at=datetime.now(timezone.utc),
@@ -84,7 +88,7 @@ class FMPClient:
     def get_ratios_ttm(self, ticker: str) -> Dict[str, float | None]:
         normalized = _normalize_ticker(ticker)
         rows = self._request_json(f"/api/v3/ratios-ttm/{normalized}")
-        row = rows[0] if rows else {}
+        row = rows[0] if rows and isinstance(rows[0], dict) else {}
         peg_raw = row.get("pegRatioTTM", row.get("pegRatio"))
         return {"ticker": normalized, "peg_ratio": _to_optional_float(peg_raw)}
 
@@ -97,6 +101,8 @@ class FMPClient:
 
         normalized_rows: List[Dict[str, Any]] = []
         for row in rows:
+            if not isinstance(row, dict):
+                continue
             report_date = _to_optional_date(row.get("date"))
             normalized_rows.append(
                 {
@@ -118,13 +124,24 @@ class FMPClient:
 
         ratios = self.get_ratios_ttm(normalized)
         cash_flows = self.get_cash_flow_statement_quarter(normalized)
-        latest_fcf = next((row for row in cash_flows if row.get("free_cash_flow") is not None), None)
+        latest_fcf = next(
+            (row for row in cash_flows if isinstance(row, dict) and row.get("free_cash_flow") is not None),
+            None,
+        )
 
         fundamentals = FundamentalsData(
             ticker=normalized,
-            peg_ratio=ratios.get("peg_ratio"),
-            free_cash_flow=latest_fcf.get("free_cash_flow") if latest_fcf else None,
-            fcf_report_date=latest_fcf.get("report_date") if latest_fcf else None,
+            peg_ratio=_to_optional_float(ratios.get("peg_ratio")),
+            free_cash_flow=(
+                _to_optional_float(latest_fcf.get("free_cash_flow"))
+                if latest_fcf and isinstance(latest_fcf, dict)
+                else None
+            ),
+            fcf_report_date=(
+                latest_fcf.get("report_date")
+                if latest_fcf and isinstance(latest_fcf, dict)
+                else None
+            ),
             fetched_at=datetime.now(timezone.utc),
         )
 
@@ -157,8 +174,11 @@ class FMPClient:
             if isinstance(payload, list):
                 return payload
             if isinstance(payload, dict):
+                # Some error responses come as {"Error Message": ...}
+                if "Error Message" in payload:
+                    raise FMPClientError(f"FMP error: {payload['Error Message']}")
                 return [payload]
-            raise FMPClientError("Unexpected FMP response format.")
+            return []  # unexpected type — treat as empty
         except FMPRateLimitError:
             raise
         except requests.RequestException as exc:
