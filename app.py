@@ -7,7 +7,9 @@ from typing import Any, Iterable, List, Sequence
 
 import streamlit as st
 
-from database import SupabaseRepository
+#from database import SupabaseRepository
+from database import SupabaseRepository, DatabaseConfigurationError, DatabaseConnectionError
+
 from deep_dive_ui import (
     DeepDiveRenderModel,
     build_conviction_history_series,
@@ -396,14 +398,40 @@ def _resolve_peg_and_fcf(
 def _build_clients() -> tuple[SupabaseRepository | None, FMPClient | None, YFinanceClient | None]:
     try:
         repository = SupabaseRepository.from_config(config=dict(st.secrets))
+    except DatabaseConfigurationError:
+        st.error("SUPABASE_URL or SUPABASE_KEY is missing. Check Streamlit secrets.")
+        return None, None, None
+    except DatabaseConnectionError:
+        st.error(
+            "Unable to connect to Supabase. Verify that SUPABASE_URL and SUPABASE_KEY are correct."
+        )
+        return None, None, None
+    except Exception as exc:
+        st.error(f"Unexpected error initializing database: {exc}")
+        return None, None, None
+
+    try:
         fmp_client = FMPClient(
             api_key=str(st.secrets.get("FMP_API_KEY", "")),
             cache_policy=AlphaDipCachePolicy(),
         )
-        yfinance_client = YFinanceClient()
-        return repository, fmp_client, yfinance_client
-    except Exception:
+        # Validate the key with a lightweight call
+        fmp_client.get_quote("AAPL")
+    except FMPRateLimitError:
+        st.warning("FMP rate limit hit during startup — continuing in read-only mode.")
+        fmp_client.read_only = True
+    except FMPClientError:
+        st.error(
+            "FMP_API_KEY appears invalid — quote request failed. "
+            "Verify the key in Streamlit secrets."
+        )
         return None, None, None
+    except Exception as exc:
+        st.error(f"Unexpected error initializing FMP client: {exc}")
+        return None, None, None
+
+    yfinance_client = YFinanceClient()
+    return repository, fmp_client, yfinance_client
 
 
 def render_command_center_view() -> None:
