@@ -355,32 +355,32 @@ Satisfy PRD error-handling requirements under real-world failures.
 Build robust, deterministic, maintainable test and quality pipelines.
 
 ### Strict Subtasks
-- [ ] Expand test markers and enforce marker discipline.
-- [ ] Add deterministic fixtures/factories for OHLC and fundamentals.
-- [ ] Add coverage reporting and gate (recommended: core modules >= 85%).
-- [ ] Add CI matrix (Windows + Linux, supported Python versions).
-- [ ] Add “no live network in unit tests” guard.
-- [ ] Add artifact uploads for failures and coverage outputs.
+- [x] Expand test markers and enforce marker discipline.
+- [x] Add deterministic fixtures/factories for OHLC and fundamentals.
+- [x] Add coverage reporting and gate (recommended: core modules >= 85%).
+- [x] Add CI matrix (Windows + Linux, supported Python versions).
+- [x] Add “no live network in unit tests” guard.
+- [x] Add artifact uploads for failures and coverage outputs.
 
 ### Required Artifacts
-- [ ] Updated `pytest.ini`.
-- [ ] Updated CI workflow.
-- [ ] Shared fixtures in `tests/conftest.py`.
+- [x] Updated `pytest.ini`.
+- [x] Updated CI workflow.
+- [x] Shared fixtures in `tests/conftest.py`.
 
 ### Milestone Tests
-- [ ] Unit, integration, e2e suites can run independently.
-- [ ] Coverage gate enforces threshold.
-- [ ] Flaky test detection pass (no non-deterministic failures in repeated runs).
-- [ ] CI matrix is green.
+- [x] Unit, integration, e2e suites can run independently.
+- [x] Coverage gate enforces threshold.
+- [x] Flaky test detection pass (no non-deterministic failures in repeated runs).
+- [x] CI matrix is green.
 
 ### Regression Tests (M1–M9)
-- [ ] Full historical suite passes under CI matrix.
+- [x] Full historical suite passes under CI matrix.
 
 ### Commit Nudge (minimum)
-- [ ] `test(quality): add deterministic fixture factories`
-- [ ] `ci(quality): enforce coverage gate and matrix builds`
-- [ ] `test(quality): block live network in unit test scope`
-- [ ] `chore(ci): publish test artifacts on failure`
+- [x] `test(quality): add deterministic fixture factories`
+- [x] `ci(quality): enforce coverage gate and matrix builds`
+- [x] `test(quality): block live network in unit test scope`
+- [x] `chore(ci): publish test artifacts on failure`
 
 ---
 

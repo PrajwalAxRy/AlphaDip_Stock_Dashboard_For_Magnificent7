@@ -260,10 +260,13 @@ Every error is logged with a 12-character correlation ID (UUID hex prefix). User
 
 ## Testing
 
+Milestone 9 adds stricter quality gates: deterministic shared fixtures/fakes, a **coverage threshold gate**, and a **no-live-network guard** for unit tests.
+
 ### Test Structure
 
 ```
 tests/
+├── conftest.py                  # Shared fixtures/fakes + unit-test network guard
 ├── unit/
 │   ├── test_smoke.py              # Basic smoke tests (project name, missing secrets)
 │   ├── test_engine.py             # Scoring engine boundaries, PEG/FCF thresholds, MSFT parity
@@ -277,7 +280,9 @@ tests/
 ├── e2e/
 │   └── test_daily_snapshot_pipeline_e2e.py  # Full pipeline flow with fakes
 └── fixtures/
-    └── msft_reference_case.json   # Golden reference for MSFT scoring parity
+├── msft_reference_case.json   # Golden reference for MSFT scoring parity
+├── ohlc_sample.json           # Deterministic OHLC sample payload
+└── fundamentals_sample.json   # Deterministic fundamentals sample payload
 ```
 
 ### Running Tests
@@ -287,13 +292,13 @@ tests/
 pytest -v
 
 # Run only unit tests
-pytest -m unit -v
+pytest -m unit --disable-socket --allow-unix-socket --no-cov -v
 
 # Run only integration tests
-pytest -m integration -v
+pytest -m integration --no-cov -v
 
 # Run only e2e tests
-pytest -m e2e -v
+pytest -m e2e --no-cov -v
 
 # Run a specific test file
 pytest tests/unit/test_engine.py -v
@@ -305,6 +310,12 @@ pytest tests/unit/test_resilience.py::TestMarketStatus -v
 pytest -q
 ```
 
+### Coverage Gate
+
+- `pytest.ini` enables coverage by default for core modules and enforces `--cov-fail-under=80`.
+- When running only a subset (like `-m unit`), use `--no-cov` to avoid failing the global coverage gate due to intentionally reduced execution surface.
+- Coverage output is written to `coverage.xml` for CI artifact upload.
+
 ### Test Markers (defined in `pytest.ini`)
 
 | Marker | Purpose |
@@ -312,6 +323,7 @@ pytest -q
 | `unit` | Fast, isolated tests — all external APIs mocked, no network |
 | `integration` | Tests that use real infrastructure (DB with fake client) |
 | `e2e` | End-to-end user flow tests |
+| `slow` | Tests that take more than a few seconds to run |`
 
 ### Current Test Count: **66 tests passing**
 
@@ -405,6 +417,16 @@ These are the key values you may want to adjust, and where to find them:
 
 ## GitHub Actions CI/CD
 
+### CI Workflow (Test Suite + Coverage Gate)
+
+**File**: `.github/workflows/ci.yml`
+
+- Runs on every push and on PRs to `main`.
+- Matrix: **Windows + Ubuntu** across Python **3.10 / 3.11 / 3.12**.
+- Executes unit/integration/e2e suites independently (unit tests run with network blocked).
+- Executes the full suite once per matrix entry with the coverage gate enabled.
+- Uploads artifacts (JUnit XML results + `coverage.xml`) for debugging and reporting.
+
 ### Daily Snapshot Workflow
 
 **File**: `.github/workflows/daily_update.yml`
@@ -469,7 +491,7 @@ refactor(scope): ...
 | 6 | Command Center (Main Dashboard) | ✅ |
 | 7 | Deep Dive View + Analyst Commentary | ✅ |
 | 8 | Edge Cases, Reliability, and Graceful Degradation | ✅ |
-| 9 | Test Hardening + CI Quality Gates | ⬜ |
+| 9 | Test Hardening + CI Quality Gates | ✅ |
 | 10 | Deployment, Verification, and Handoff | ⬜ |
 
 See `milestones.md` for the full strict checklist and acceptance criteria.
