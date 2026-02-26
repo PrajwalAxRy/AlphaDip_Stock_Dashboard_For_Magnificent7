@@ -1,0 +1,29 @@
+{
+  "input": {
+    "current_price": 360.0,
+    "high_52_week": 450.0,
+    "ma_50_day": 350.0,
+    "peg_ratio": 1.3,
+    "fcf_yield_last_3_quarters": [
+      0.020,
+      0.023,
+      0.026
+    ],
+    "stock_return_1m": 0.052,
+    "sp500_return_1m": 0.021
+  },
+  "expected": {
+    "price_gap_percent": 20.0,
+    "monitor_meter_band": "Watching",
+    "monitor_meter_score": 6,
+    "is_recovery": true,
+    "components": {
+      "price_architecture": 20.0,
+      "trend_confirmation": 20.0,
+      "peg": 14.0,
+      "fcf_safety": 15.0,
+      "relative_strength": 15.0
+    },
+    "conviction_score": 84
+  }
+}
