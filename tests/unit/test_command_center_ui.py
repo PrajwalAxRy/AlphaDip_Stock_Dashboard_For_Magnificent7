@@ -21,6 +21,7 @@ pytestmark = pytest.mark.unit
 @dataclass
 class FakeRepository:
     watchlist: list[dict[str, Any]]
+    snapshots: dict[str, list[dict[str, Any]]] | None = None
 
     def __post_init__(self) -> None:
         self.cache: dict[str, dict[str, Any]] = {
@@ -45,6 +46,10 @@ class FakeRepository:
 
     def fundamentals_cache_query(self, ticker: str) -> dict[str, Any] | None:
         return self.cache.get(ticker)
+
+    def snapshot_query(self, ticker: str, limit: int = 90) -> list[dict[str, Any]]:
+        rows = (self.snapshots or {}).get(ticker, [])
+        return list(rows[:limit])
 
 
 class FakeFMPClient:
