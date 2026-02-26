@@ -4,3 +4,5 @@ yfinance
 requests
 supabase
 pytest
+pytest-cov
+pytest-socket
