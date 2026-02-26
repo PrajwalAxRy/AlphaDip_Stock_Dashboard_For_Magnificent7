@@ -134,38 +134,38 @@ Implement persistent watchlist and historical snapshot storage.
 Build reliable data clients while preserving API credits.
 
 ### Strict Subtasks
-- [ ] Implement FMP client endpoints:
+- [x] Implement FMP client endpoints:
   - quote
   - ratios-ttm
   - cash-flow-statement (quarter)
-- [ ] Implement yfinance client for 2-year OHLC data.
-- [ ] Normalize provider payloads into internal typed structures.
-- [ ] Implement caching policy:
+- [x] Implement yfinance client for 2-year OHLC data.
+- [x] Normalize provider payloads into internal typed structures.
+- [x] Implement caching policy:
   - quote: short TTL
   - fundamentals: long TTL / quarterly reuse
-- [ ] Implement 429 circuit-breaker state (`read_only=True` fallback).
-- [ ] Add logging for API latency/errors.
+- [x] Implement 429 circuit-breaker state (`read_only=True` fallback).
+- [x] Add logging for API latency/errors.
 
 ### Required Artifacts
-- [ ] `services/fmp_client.py`
-- [ ] `services/yfinance_client.py`
-- [ ] `services/cache.py` (or equivalent)
-- [ ] Unit tests with mocks for all external calls.
+- [x] `services/fmp_client.py`
+- [x] `services/yfinance_client.py`
+- [x] `services/cache.py` (or equivalent)
+- [x] Unit tests with mocks for all external calls.
 
 ### Milestone Tests
-- [ ] Unit tests mock all external providers; no live network.
-- [ ] Null PEG response handled without exception.
-- [ ] Cache hit/miss behavior verified.
-- [ ] HTTP 429 flips system to read-only mode.
+- [x] Unit tests mock all external providers; no live network.
+- [x] Null PEG response handled without exception.
+- [x] Cache hit/miss behavior verified.
+- [x] HTTP 429 flips system to read-only mode.
 
 ### Regression Tests (M1–M3)
-- [ ] Milestone 1 + 2 suites pass unchanged.
+- [x] Milestone 1 + 2 suites pass unchanged.
 
 ### Commit Nudge (minimum)
-- [ ] `feat(data): add fmp client for quote ratios cashflow endpoints`
-- [ ] `feat(data): add yfinance adapter for historical ohlc`
-- [ ] `feat(cache): add fundamentals and quote caching policy`
-- [ ] `test(data): add mocked provider tests and 429 scenario`
+- [x] `feat(data): add fmp client for quote ratios cashflow endpoints`
+- [x] `feat(data): add yfinance adapter for historical ohlc`
+- [x] `feat(cache): add fundamentals and quote caching policy`
+- [x] `test(data): add mocked provider tests and 429 scenario`
 
 ---
 
