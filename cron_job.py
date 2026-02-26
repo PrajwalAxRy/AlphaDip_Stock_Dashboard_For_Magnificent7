@@ -11,7 +11,9 @@ from typing import Any, Iterable, Sequence
 
 from database import SupabaseRepository
 from engine import build_conviction_result
+from services.error_handling import log_error, log_warning
 from services.fmp_client import FMPClient, FMPClientError, FMPRateLimitError
+from services.market_status import is_market_closed, last_trading_date
 from services.yfinance_client import OhlcBar, YFinanceClient, YFinanceClientError
 
 
@@ -29,6 +31,7 @@ class PipelineSummary:
     dry_run_skipped_writes: int
     errors: int
     read_only_mode: bool
+    skipped_market_closed: bool = False
 
 
 def run_daily_snapshot_pipeline(
@@ -40,6 +43,25 @@ def run_daily_snapshot_pipeline(
     yfinance_client: YFinanceClient | None = None,
 ) -> PipelineSummary:
     run_date = as_of_date or date.today()
+
+    # --- Weekend / market-closed guard ---
+    if is_market_closed(run_date):
+        LOGGER.info(
+            "pipeline_skipped_market_closed run_date=%s last_trading_date=%s",
+            run_date.isoformat(),
+            last_trading_date(run_date).isoformat(),
+        )
+        return PipelineSummary(
+            run_date=run_date.isoformat(),
+            total_tickers=0,
+            processed=0,
+            persisted=0,
+            dry_run_skipped_writes=0,
+            errors=0,
+            read_only_mode=False,
+            skipped_market_closed=True,
+        )
+
     repo = repository or SupabaseRepository.from_config()
     fmp = fmp_client or FMPClient(api_key=_load_fmp_api_key())
     yfinance = yfinance_client or YFinanceClient()
@@ -107,12 +129,15 @@ def run_daily_snapshot_pipeline(
                 peg_ratio = cached.get("peg_ratio") if cached else None
                 cached_fcf = cached.get("fcf_yield") if cached else None
                 fcf_series = [cached_fcf, cached_fcf, cached_fcf] if cached_fcf is not None else None
-                LOGGER.warning(
-                    "pipeline_fundamentals_fallback ticker=%s source=supabase_cache reason=rate_limit",
-                    ticker,
+                log_warning(
+                    "pipeline_fundamentals_fallback",
+                    extra={"ticker": ticker, "source": "supabase_cache", "reason": "rate_limit"},
                 )
             except FMPClientError:
-                LOGGER.warning("pipeline_fundamentals_missing ticker=%s source=fmp", ticker)
+                log_warning(
+                    "pipeline_fundamentals_missing",
+                    extra={"ticker": ticker, "source": "fmp"},
+                )
 
             conviction = build_conviction_result(
                 current_price=quote.price,
@@ -147,7 +172,7 @@ def run_daily_snapshot_pipeline(
             )
         except (FMPClientError, YFinanceClientError, ValueError) as exc:
             errors += 1
-            LOGGER.error("pipeline_ticker_error ticker=%s error=%s", ticker, exc)
+            log_error("pipeline_ticker_error", exc=exc, extra={"ticker": ticker})
 
     summary = PipelineSummary(
         run_date=run_date.isoformat(),

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date
+from dataclasses import dataclass, field
+from datetime import date, datetime, timezone
 from statistics import mean
 from typing import Any, Iterable, List, Sequence
 
@@ -17,7 +17,19 @@ from deep_dive_ui import (
 )
 from engine import build_conviction_result
 from services.cache import AlphaDipCachePolicy
+from services.error_handling import (
+    generate_correlation_id,
+    is_quote_stale,
+    log_error,
+    log_warning,
+    user_safe_message,
+)
 from services.fmp_client import FMPClient, FMPClientError, FMPRateLimitError
+from services.market_status import (
+    is_market_closed,
+    last_trading_date,
+    should_skip_live_fetch,
+)
 from services.yfinance_client import OhlcBar, YFinanceClient, YFinanceClientError
 from ui_helpers import monitor_meter_label
 
@@ -31,6 +43,8 @@ TRADING_DAYS_1Y = 252
 class CommandCenterResult:
     rows: list[dict[str, Any]]
     read_only_mode: bool
+    market_closed: bool = False
+    stale_tickers: list[str] = field(default_factory=list)
 
 
 def get_missing_secrets(required_keys: List[str]) -> List[str]:
@@ -66,12 +80,28 @@ def should_show_read_only_banner(fmp_client: Any) -> bool:
     return bool(getattr(fmp_client, "read_only", False))
 
 
+def _build_row_from_snapshot(
+    ticker: str,
+    snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a dashboard row from a persisted snapshot (used when market is closed)."""
+    return {
+        "Ticker": ticker,
+        "Price": snapshot.get("price", "N/A"),
+        "Price Gap %": snapshot.get("price_gap", "N/A"),
+        "Monitor Meter": "cached",
+        "Trend": "🚀" if snapshot.get("is_recovery") else "📉",
+        "Deep Dive": f"Open {ticker}",
+    }
+
+
 def build_command_center_rows(
     *,
     repository: Any,
     fmp_client: Any,
     yfinance_client: Any,
     refresh_lite: bool,
+    now: datetime | None = None,
 ) -> CommandCenterResult:
     watchlist = repository.watchlist_list()
     tickers = [
@@ -80,8 +110,35 @@ def build_command_center_rows(
         if str(row.get("ticker", "")).strip()
     ]
 
+    market_closed = should_skip_live_fetch(now)
+    stale_tickers: list[str] = []
+
+    # --- Weekend / market-closed path: serve cached snapshots only ----------
+    if market_closed:
+        rows: list[dict[str, Any]] = []
+        for ticker in tickers:
+            snapshots = repository.snapshot_query(ticker, limit=1)
+            if snapshots:
+                rows.append(_build_row_from_snapshot(ticker, snapshots[0]))
+            else:
+                rows.append({
+                    "Ticker": ticker,
+                    "Price": "N/A",
+                    "Price Gap %": "N/A",
+                    "Monitor Meter": "N/A",
+                    "Trend": "📉",
+                    "Deep Dive": f"Open {ticker}",
+                })
+        return CommandCenterResult(
+            rows=rows,
+            read_only_mode=should_show_read_only_banner(fmp_client),
+            market_closed=True,
+            stale_tickers=[],
+        )
+
+    # --- Normal (market-open) path ------------------------------------------
     benchmark_return_1m = _safe_benchmark_return(yfinance_client)
-    rows: list[dict[str, Any]] = []
+    rows = []
 
     for ticker in tickers:
         row: dict[str, Any] = {
@@ -95,6 +152,12 @@ def build_command_center_rows(
 
         try:
             quote = fmp_client.get_quote(ticker, use_cache=not refresh_lite)
+
+            # Stale-quote guard: flag but still render the data we have
+            fetched_at = getattr(quote, "fetched_at", None)
+            if is_quote_stale(fetched_at, now=now):
+                stale_tickers.append(ticker)
+
             bars = yfinance_client.get_ohlc_2y(ticker)
             ma_50_day = _compute_ma_50(bars, quote.price)
             high_52_week = (
@@ -131,12 +194,23 @@ def build_command_center_rows(
                 "Trend": "🚀" if conviction.is_recovery else "📉",
                 "Deep Dive": f"Open {ticker}",
             }
-        except (FMPRateLimitError, FMPClientError, YFinanceClientError, ValueError):
-            pass
+        except FMPRateLimitError:
+            cid = log_warning("fmp_rate_limit", extra={"ticker": ticker})
+            # Fall back to latest snapshot from DB
+            snapshots = repository.snapshot_query(ticker, limit=1)
+            if snapshots:
+                row = _build_row_from_snapshot(ticker, snapshots[0])
+        except (FMPClientError, YFinanceClientError, ValueError) as exc:
+            cid = log_error("ticker_data_fetch_failed", exc=exc, extra={"ticker": ticker})
 
         rows.append(row)
 
-    return CommandCenterResult(rows=rows, read_only_mode=should_show_read_only_banner(fmp_client))
+    return CommandCenterResult(
+        rows=rows,
+        read_only_mode=should_show_read_only_banner(fmp_client),
+        market_closed=False,
+        stale_tickers=stale_tickers,
+    )
 
 
 def build_deep_dive_model(
@@ -236,7 +310,8 @@ def build_deep_dive_model(
             commentary=commentary,
             missing_fundamentals=missing_fundamentals,
         )
-    except (FMPRateLimitError, FMPClientError, YFinanceClientError, ValueError):
+    except (FMPRateLimitError, FMPClientError, YFinanceClientError, ValueError) as exc:
+        cid = log_error("deep_dive_data_failed", exc=exc, extra={"ticker": normalized_ticker})
         return None
 
 
@@ -374,8 +449,18 @@ def render_command_center_view() -> None:
         refresh_lite=refresh_lite,
     )
 
+    if result.market_closed:
+        st.info(user_safe_message("market_closed"))
+
     if result.read_only_mode:
-        st.warning("Read-only mode active: FMP rate limit circuit breaker is enabled.")
+        st.warning(user_safe_message("read_only_mode"))
+
+    if result.stale_tickers:
+        st.warning(
+            user_safe_message("stale_data")
+            + " Affected: "
+            + ", ".join(result.stale_tickers)
+        )
 
     if not result.rows:
         st.info("No tickers in watchlist. Add one to begin monitoring.")
