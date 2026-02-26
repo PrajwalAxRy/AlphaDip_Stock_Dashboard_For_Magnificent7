@@ -322,30 +322,30 @@ Deliver per-ticker analytical page with historical context.
 Satisfy PRD error-handling requirements under real-world failures.
 
 ### Strict Subtasks
-- [ ] Implement weekend/market-closed behavior using latest valid snapshot.
-- [ ] Implement stale quote guard (>24h) with status indicator.
-- [ ] Harden missing/null payload handling for all providers.
-- [ ] Ensure 429 read-only mode uses cached Supabase data only.
-- [ ] Centralize user-safe error messaging and logging correlation IDs.
+- [x] Implement weekend/market-closed behavior using latest valid snapshot.
+- [x] Implement stale quote guard (>24h) with status indicator.
+- [x] Harden missing/null payload handling for all providers.
+- [x] Ensure 429 read-only mode uses cached Supabase data only.
+- [x] Centralize user-safe error messaging and logging correlation IDs.
 
 ### Required Artifacts
-- [ ] Market status utility module.
-- [ ] Error-handling utility module.
+- [x] Market status utility module.
+- [x] Error-handling utility module.
 
 ### Milestone Tests
-- [ ] Sunday simulation uses Friday snapshot and avoids live quote fetch.
-- [ ] 429 simulation keeps app usable in read-only mode.
-- [ ] Missing fundamentals never crash engine/UI/pipeline.
-- [ ] Stale-data status appears correctly.
+- [x] Sunday simulation uses Friday snapshot and avoids live quote fetch.
+- [x] 429 simulation keeps app usable in read-only mode.
+- [x] Missing fundamentals never crash engine/UI/pipeline.
+- [x] Stale-data status appears correctly.
 
 ### Regression Tests (M1–M8)
-- [ ] Full prior suites pass.
+- [x] Full prior suites pass.
 
 ### Commit Nudge (minimum)
-- [ ] `feat(resilience): add market closed fallback behavior`
-- [ ] `feat(resilience): add stale quote and read-only handling`
-- [ ] `fix(resilience): normalize null provider payload paths`
-- [ ] `test(resilience): add weekend 429 and stale data scenarios`
+- [x] `feat(resilience): add market closed fallback behavior`
+- [x] `feat(resilience): add stale quote and read-only handling`
+- [x] `fix(resilience): normalize null provider payload paths`
+- [x] `test(resilience): add weekend 429 and stale data scenarios`
 
 ---
 
