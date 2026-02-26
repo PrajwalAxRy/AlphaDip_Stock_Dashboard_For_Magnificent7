@@ -1,0 +1,79 @@
+name: CI — Test Suite + Coverage Gate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── Unit tests (network blocked) ──────────────────────────
+      - name: Run unit tests (no network)
+        run: >
+          pytest -m unit
+          --disable-socket
+          --allow-unix-socket
+          --no-cov
+          --junitxml=test-results-unit.xml
+
+      # ── Integration tests ─────────────────────────────────────
+      - name: Run integration tests
+        run: >
+          pytest -m integration
+          --no-cov
+          --junitxml=test-results-integration.xml
+
+      # ── E2E tests ─────────────────────────────────────────────
+      - name: Run e2e tests
+        run: >
+          pytest -m e2e
+          --no-cov
+          --junitxml=test-results-e2e.xml
+
+      # ── Full suite (coverage gate) ────────────────────────────
+      - name: Run full suite with coverage gate
+        run: >
+          pytest
+          --junitxml=test-results-full.xml
+
+      # ── Artifacts ─────────────────────────────────────────────
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: test-results-*.xml
+          retention-days: 14
