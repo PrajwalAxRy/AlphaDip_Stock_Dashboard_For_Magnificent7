@@ -23,6 +23,10 @@ class FMPConnectivityError(FMPClientError):
     pass
 
 
+class FMPSubscriptionError(FMPClientError):
+    pass
+
+
 class FMPRateLimitError(FMPClientError):
     pass
 
@@ -73,7 +77,7 @@ class FMPClient:
             if cached is not None and isinstance(cached, QuoteData):
                 return cached
 
-        rows = self._request_json(f"/api/v3/quote/{normalized}")
+        rows = self._request_json("/stable/quote", params={"symbol": normalized})
         if not rows:
             raise FMPClientError(f"No quote data returned for ticker {normalized}.")
 
@@ -97,7 +101,7 @@ class FMPClient:
 
     def get_ratios_ttm(self, ticker: str) -> Dict[str, float | None]:
         normalized = _normalize_ticker(ticker)
-        rows = self._request_json(f"/api/v3/ratios-ttm/{normalized}")
+        rows = self._request_json("/stable/ratios-ttm", params={"symbol": normalized})
         row = rows[0] if rows and isinstance(rows[0], dict) else {}
         peg_raw = row.get("pegRatioTTM", row.get("pegRatio"))
         return {"ticker": normalized, "peg_ratio": _to_optional_float(peg_raw)}
@@ -105,8 +109,8 @@ class FMPClient:
     def get_cash_flow_statement_quarter(self, ticker: str, *, limit: int = 4) -> List[Dict[str, Any]]:
         normalized = _normalize_ticker(ticker)
         rows = self._request_json(
-            f"/api/v3/cash-flow-statement/{normalized}",
-            params={"period": "quarter", "limit": str(limit)},
+            "/stable/cash-flow-statement",
+            params={"symbol": normalized, "period": "quarter", "limit": str(limit)},
         )
 
         normalized_rows: List[Dict[str, Any]] = []
@@ -193,6 +197,8 @@ class FMPClient:
                 if "Error Message" in payload:
                     message = str(payload["Error Message"])
                     lowered_message = message.lower()
+                    if "legacy endpoint" in lowered_message or "no longer supported" in lowered_message:
+                        raise FMPSubscriptionError(f"FMP endpoint access issue: {message}")
                     if (
                         "invalid api key" in lowered_message
                         or "apikey invalid" in lowered_message

@@ -32,6 +32,7 @@ from services.fmp_client import (
     FMPClientError,
     FMPConnectivityError,
     FMPRateLimitError,
+    FMPSubscriptionError,
 )
 from services.market_status import (
     is_market_closed,
@@ -436,6 +437,11 @@ def _build_clients() -> tuple[SupabaseRepository | None, FMPClient | None, YFina
             st.error(
                 "FMP authentication failed. Verify FMP_API_KEY in Streamlit secrets "
                 "and ensure it has access to quote endpoints."
+            )
+        elif isinstance(exc, FMPSubscriptionError):
+            st.error(
+                "FMP endpoint access failed for your account plan. "
+                "Use current stable endpoints and confirm your subscription includes quote/fundamental APIs."
             )
         elif isinstance(exc, FMPConnectivityError):
             st.error(
